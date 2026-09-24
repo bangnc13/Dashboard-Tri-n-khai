@@ -4,7 +4,7 @@ import os
 
 # 1. Cấu hình trang Streamlit mở rộng full màn hình
 st.set_page_config(
-    page_title="Dashboard Quản Lý Triển Khai",
+    page_title="TQG-Dashboard Quản Lý Triển Khai",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="collapsed"
