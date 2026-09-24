@@ -1,1 +1,1341 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Quản Lý Triển Khai & Cảnh Báo Tồn Giờ</title>
 
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#2563eb',
+                            600: '#1d4ed8',
+                            700: '#1e40af',
+                            800: '#1e3a8a',
+                        },
+                        danger: {
+                            50: '#fef2f2',
+                            100: '#fee2e2',
+                            500: '#ef4444',
+                            600: '#dc2626',
+                            700: '#b91c1c',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS CDN (Parsing Excel Files) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- FontAwesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        .alert-pulse {
+            animation: pulse-border 2s infinite;
+        }
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col custom-scrollbar">
+
+    <!-- Navigation Header -->
+    <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+                    <i class="fa-solid font-bold text-lg fa-chart-line"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        Dashboard Quản Lý Triển Khai
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">TK.xlsx</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Dashboard-TQG</p>
+                </div>
+            </div>
+
+            <!-- File Upload & Action Controls -->
+            <div class="flex items-center gap-3">
+                <button onclick="openPasswordModal()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-blue-600/20 flex items-center gap-2 transition duration-200 cursor-pointer">
+                    <i class="fa-solid fa-file-excel text-base"></i>
+                    <span>Tải file TK.xlsx</span>
+                </button>
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="hidden">
+                
+                <button id="btnReloadSample" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-medium text-xs sm:text-sm px-3.5 py-2.5 rounded-xl transition duration-200 flex items-center gap-2" title="Tải lại dữ liệu mẫu">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                    <span class="hidden sm:inline">Dữ liệu mẫu</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Critical Overdue Alert Banner (Dynamic) -->
+        <div id="criticalAlertBanner" class="hidden rounded-2xl bg-gradient-to-r from-red-950/80 via-red-900/40 to-slate-900 border border-red-500/40 p-4 shadow-xl alert-pulse">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex items-center space-x-3.5">
+                    <div class="w-11 h-11 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400 flex-shrink-0">
+                        <i class="fa-solid fa-triangle-exclamation text-xl animate-bounce"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-red-200 tracking-wide uppercase flex items-center gap-2">
+                            <span>Cảnh Báo Quá Hạn Nghiêm Trọng</span>
+                            <span id="alertCountBadge" class="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full font-extrabold">0 HĐ</span>
+                        </h3>
+                        <p id="alertBannerText" class="text-xs text-red-300/80 mt-0.5">
+                            Phát hiện các tuyến triển khai có thời gian tồn vượt quá mức quy định 72 giờ!
+                        </p>
+                    </div>
+                </div>
+                <button onclick="switchTab('alerts')" class="bg-red-600 hover:bg-red-500 text-white font-semibold text-xs px-4 py-2 rounded-lg transition shadow-md shadow-red-600/30 whitespace-nowrap flex items-center gap-1.5">
+                    <span>Xem danh sách cảnh báo</span>
+                    <i class="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- KPI Metrics Grid (Updated to 3 Cards) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Card 1: Tổng Số HĐ -->
+            <div class="glass-card rounded-2xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Tổng Số HĐ</span>
+                    <div class="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                        <i class="fa-solid fa-file-contract"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div id="kpiTotalHD" class="text-2xl sm:text-3xl font-extrabold text-white">0</div>
+                    <span class="text-[11px] text-slate-400 mt-1 block">Hợp đồng đăng ký</span>
+                </div>
+            </div>
+
+            <!-- Card 2: Nhân Sự Triển Khai -->
+            <div class="glass-card rounded-2xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Nhân Sự</span>
+                    <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div id="kpiTotalStaff" class="text-2xl sm:text-3xl font-extrabold text-white">0</div>
+                    <span class="text-[11px] text-slate-400 mt-1 block">Kỹ thuật viên phụ trách</span>
+                </div>
+            </div>
+
+            <!-- Card 3: Cảnh Báo Tồn > 72h -->
+            <div class="glass-card rounded-2xl p-4 flex flex-col justify-between border-red-500/30 bg-gradient-to-br from-red-950/20 to-slate-900 hover:border-red-500/50 transition">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wider text-red-400">Cảnh Báo > 72h</span>
+                    <div class="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 flex items-center justify-center">
+                        <i class="fa-solid fa-clock flex animate-pulse"></i>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div id="kpiOverdue72" class="text-2xl sm:text-3xl font-extrabold text-red-500">0</div>
+                    <span id="kpiOverduePercent" class="text-[11px] text-red-400/80 mt-1 block font-medium">0% tổng số HĐ</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls & Filters Section -->
+        <div class="glass-card rounded-2xl p-4 sm:p-5 space-y-4">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <!-- Navigation Tabs -->
+                <div class="flex items-center space-x-1 sm:space-x-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-800 overflow-x-auto">
+                    <button onclick="switchTab('overview')" id="tabBtnOverview" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition bg-blue-600 text-white shadow">
+                        <i class="fa-solid fa-chart-pie mr-1.5"></i> Tổng Quan
+                    </button>
+                    <button onclick="switchTab('alerts')" id="tabBtnAlerts" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-400 hover:text-white flex items-center gap-1.5">
+                        <i class="fa-solid fa-triangle-exclamation text-red-400"></i> Cảnh Báo (>72h)
+                        <span id="tabAlertBadge" class="bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] px-1.5 py-0.2 rounded-full font-bold">0</span>
+                    </button>
+                    <button onclick="switchTab('table')" id="tabBtnTable" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-table-list mr-1.5"></i> Danh Sách HĐ
+                    </button>
+                    <button onclick="switchTab('staff')" id="tabBtnStaff" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-user-gear mr-1.5"></i> Phân Tích Nhân Sự
+                    </button>
+                </div>
+
+                <!-- Search Input -->
+                <div class="relative w-full lg:w-72">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" id="searchInput" placeholder="Tìm theo Số HĐ, Nhân sự, Block..." class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition">
+                </div>
+            </div>
+
+            <!-- Dynamic Filters -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1 font-medium">Lọc theo Block</label>
+                    <select id="filterBlock" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                        <option value="">Tất cả Block</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-medium">Loại Triển Khai</label>
+                    <select id="filterType" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                        <option value="">Tất cả loại triển khai</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-medium">Nhân Sự Phụ Trách</label>
+                    <select id="filterStaff" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                        <option value="">Tất cả nhân sự</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-medium">Trạng Thái Tồn Giờ</label>
+                    <select id="filterHourStatus" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500 transition">
+                        <option value="all">Tất cả thời gian tồn</option>
+                        <option value="over72" class="text-red-400 font-semibold">🚨 Tồn > 72 giờ (Cảnh báo)</option>
+                        <option value="48to72">⚠️ Tồn 48h - 72h (Sắp quá hạn)</option>
+                        <option value="under48">✅ Tồn &lt; 48h (Bình thường)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 1: OVERVIEW CHARTS -->
+        <div id="tabViewOverview" class="tab-content space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Chart 1: Phân bổ Tồn giờ theo Loại triển khai -->
+                <div class="glass-card rounded-2xl p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-blue-400"></i>
+                            Số Lượng HĐ Theo Loại Triển Khai
+                        </h2>
+                    </div>
+                    <div class="h-64 relative flex items-center justify-center">
+                        <canvas id="chartTypes"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2: Top Block có giờ tồn trung bình cao nhất -->
+                <div class="glass-card rounded-2xl p-5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                        <div>
+                            <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-city text-indigo-400"></i>
+                                Tồn Giờ Trung Bình Theo Block
+                            </h2>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Công thức: Tổng giờ tồn / Số lượng HĐ thuộc Block</p>
+                        </div>
+                        <select id="blockChartLimit" onchange="renderCharts()" class="bg-slate-900 border border-slate-800 text-slate-300 text-xs rounded-lg px-2.5 py-1 focus:outline-none focus:border-blue-500 self-start sm:self-auto">
+                            <option value="10" selected>Top 10 Block</option>
+                            <option value="15">Top 15 Block</option>
+                            <option value="20">Top 20 Block</option>
+                            <option value="all">Tất Cả Block</option>
+                        </select>
+                    </div>
+                    <div class="h-64 relative">
+                        <canvas id="chartBlockHours"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart 3: Phân bố khoảng giờ tồn -->
+            <div class="glass-card rounded-2xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-chart-column text-emerald-400"></i>
+                        Phân Khúc Thời Gian Tồn Của Các Tuyến Triển Khai
+                    </h2>
+                    <span class="text-xs text-red-400 font-semibold bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/20">
+                        Cảnh báo ngưỡng > 72 giờ
+                    </span>
+                </div>
+                <div class="h-64 relative">
+                    <canvas id="chartHoursDistribution"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: ALERTS CENTER (>72 Hours) -->
+        <div id="tabViewAlerts" class="tab-content hidden space-y-4">
+            <div class="glass-card rounded-2xl p-5 border-red-500/30">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="text-base font-bold text-red-400 flex items-center gap-2">
+                            <i class="fa-solid fa-bell flex animate-bounce"></i>
+                            Danh Sách Hợp Đồng Tồn Giờ > 72 Giờ Cần Xử Lý Báo Cấp
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Các tuyến triển khai dưới đây đã vượt quá 72 giờ chưa hoàn tất.</p>
+                    </div>
+                    <button onclick="exportAlertsCSV()" class="bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 text-xs font-semibold px-3.5 py-2 rounded-xl transition flex items-center gap-2 self-start sm:self-auto">
+                        <i class="fa-solid fa-download"></i> Xuất file cảnh báo
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-red-950/40 text-red-200 uppercase font-semibold text-[11px] border-b border-red-500/30">
+                            <tr>
+                                <th class="py-3 px-4">STT</th>
+                                <th class="py-3 px-4">Số HĐ</th>
+                                <th class="py-3 px-4">Block</th>
+                                <th class="py-3 px-4">Ghi chú</th>
+                                <th class="py-3 px-4">Nhân Sự Phụ Trách</th>
+                                <th class="py-3 px-4 text-right">Tồn Giờ</th>
+                                <th class="py-3 px-4 text-center">Trạng Thái</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alertsTableBody" class="divide-y divide-slate-800/60 font-medium">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Alerts Table Pagination Footer (10 rows per page) -->
+                <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-red-900/30 text-xs text-slate-400 mt-3">
+                    <div id="alertsPaginationInfo">Trang 1 / 1</div>
+                    <div class="flex items-center space-x-2">
+                        <button id="btnPrevAlertsPage" onclick="changeAlertsPage(-1)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                            <i class="fa-solid fa-chevron-left"></i> Trước
+                        </button>
+                        <span id="alertsPageIndicator" class="px-2 font-medium text-white">1</span>
+                        <button id="btnNextAlertsPage" onclick="changeAlertsPage(1)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                            Sau <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: FULL CONTRACT DATA TABLE -->
+        <div id="tabViewTable" class="tab-content hidden space-y-4">
+            <div class="glass-card rounded-2xl p-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-database text-blue-400"></i>
+                            Toàn Bộ Dữ Liệu Tuyến Triển Khai
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5" id="tableRecordCount">Hiển thị 0 bản ghi</p>
+                    </div>
+                    <button onclick="exportFullCSV()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold px-3.5 py-2 rounded-xl transition flex items-center gap-2 self-start sm:self-auto">
+                        <i class="fa-solid fa-file-csv"></i> Xuất CSV
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-900/90 text-slate-400 uppercase font-semibold text-[11px] border-b border-slate-800">
+                            <tr>
+                                <th class="py-3 px-4">#</th>
+                                <th class="py-3 px-4 cursor-pointer hover:text-white" onclick="sortTable('hd')">
+                                    Số HĐ <i class="fa-solid fa-sort text-[10px] ml-1"></i>
+                                </th>
+                                <th class="py-3 px-4 cursor-pointer hover:text-white" onclick="sortTable('block')">
+                                    Block <i class="fa-solid fa-sort text-[10px] ml-1"></i>
+                                </th>
+                                <th class="py-3 px-4 cursor-pointer hover:text-white" onclick="sortTable('type')">
+                                    Loại Triển Khai <i class="fa-solid fa-sort text-[10px] ml-1"></i>
+                                </th>
+                                <th class="py-3 px-4 cursor-pointer hover:text-white" onclick="sortTable('staff')">
+                                    Nhân Sự <i class="fa-solid fa-sort text-[10px] ml-1"></i>
+                                </th>
+                                <th class="py-3 px-4 text-right cursor-pointer hover:text-white" onclick="sortTable('hours')">
+                                    Tồn Giờ <i class="fa-solid fa-sort text-[10px] ml-1"></i>
+                                </th>
+                                <th class="py-3 px-4 text-center">Cảnh Báo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fullTableBody" class="divide-y divide-slate-800/60 font-medium">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Footer (Configured to 10 rows per page) -->
+                <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-800/80 text-xs text-slate-400">
+                    <div id="paginationInfo">Trang 1 / 1</div>
+                    <div class="flex items-center space-x-2">
+                        <button id="btnPrevPage" onclick="changePage(-1)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                            <i class="fa-solid fa-chevron-left"></i> Trước
+                        </button>
+                        <span id="pageIndicator" class="px-2 font-medium text-white">1</span>
+                        <button id="btnNextPage" onclick="changePage(1)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                            Sau <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: STAFF PERFORMANCE & BOTTLENECK -->
+        <div id="tabViewStaff" class="tab-content hidden space-y-6">
+            <div class="glass-card rounded-2xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-user-clock text-purple-400"></i>
+                        Thống Kê Khối Lượng Tồn Giờ Và Cảnh Báo Theo Nhân Sự
+                    </h2>
+                </div>
+                <div class="h-72 relative">
+                    <canvas id="chartStaffOverdue"></canvas>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-5">
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-emerald-400"></i>
+                    Chi Tiết Tải Công Việc Của Kỹ Thuật Viên
+                </h3>
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-900/90 text-slate-400 uppercase font-semibold text-[11px] border-b border-slate-800">
+                            <tr>
+                                <th class="py-3 px-4">Tên Nhân Sự</th>
+                                <th class="py-3 px-4 text-center">Tổng HĐ Phụ Trách</th>
+                                <th class="py-3 px-4 text-center">Số HĐ Tồn > 72h</th>
+                                <th class="py-3 px-4 text-right">Tổng Giờ Tồn</th>
+                                <th class="py-3 px-4 text-right">TB Giờ / HĐ</th>
+                                <th class="py-3 px-4 text-center">Tỷ Lệ Quá Hạn</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staffTableBody" class="divide-y divide-slate-800/60 font-medium">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Staff Table Pagination Controls (10 rows per page) -->
+                <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-800/80 text-xs text-slate-400 mt-3">
+                    <div id="staffPaginationInfo">Trang 1 / 1</div>
+                    <div class="flex items-center space-x-2">
+                        <button id="btnPrevStaffPage" onclick="changeStaffPage(-1)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                            <i class="fa-solid fa-chevron-left"></i> Trước
+                        </button>
+                        <span id="staffPageIndicator" class="px-2 font-medium text-white">1</span>
+                        <button id="btnNextStaffPage" onclick="changeStaffPage(1)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition">
+                            Sau <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-slate-900 border-t border-slate-800 py-4 mt-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            Hệ thống Dashboard Quản Lý Triển Khai TK.xlsx
+        </div>
+    </footer>
+
+    <!-- Notification Toast Modal -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-800 text-white border border-slate-700 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+        <i id="toastIcon" class="fa-solid fa-circle-info text-blue-400 text-lg"></i>
+        <span id="toastMessage" class="text-xs font-medium">Thông báo hệ thống</span>
+    </div>
+
+    <!-- Security Password Verification Modal -->
+    <div id="passwordModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-lock text-blue-400"></i>
+                    Xác Thực Mật Khẩu Tải File
+                </h3>
+                <button onclick="closePasswordModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-400 mb-4">
+                Vui lòng nhập mật khẩu bảo mật để tiến hành nạp dữ liệu từ file Excel TK.xlsx vào hệ thống.
+            </p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1.5">Mật khẩu xác thực</label>
+                    <input type="password" id="inputSecurityPassword" placeholder="Nhập mật khẩu ..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 transition">
+                    <p id="passwordErrorMsg" class="text-xs text-red-400 mt-1.5 hidden font-medium flex items-center gap-1">
+                        <i class="fa-solid fa-circle-exclamation"></i> Mật khẩu không chính xác! Vui lòng thử lại.
+                    </p>
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button onclick="closePasswordModal()" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition">
+                        Hủy bỏ
+                    </button>
+                    <button onclick="verifyPasswordAndUpload()" class="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/30 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-check text-xs"></i> Xác nhận
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample fallback dataset matching exact specifications
+        const SAMPLE_DATA = [
+            { hd: "TQAAF1352", block: "Xa Hung Duc-001- L01", type: "Triển khai mới", staff: "TQGTI.BINHTH1", hours: 484.5 },
+            { hd: "TQAAC3881", block: "Xa Hung Duc-001- L01", type: "KH nâng cấp dịch vụ gia tăng", staff: "TQGTI.BINHTH1", hours: 392.7 },
+            { hd: "TQAAC8438", block: "Xa Hung Duc-001- L01", type: "KH nâng cấp dịch vụ gia tăng", staff: "TQGTI.BINHTH1", hours: 384.0 },
+            { hd: "TQAAF1563", block: "Phuong Minh Xuan-001- L05", type: "Triển khai mới", staff: "TQGTI.TUANQD", hours: 362.6 },
+            { hd: "TQAAF1606", block: "Xa Chiem Hoa-001- L04", type: "Triển khai mới", staff: "TQGTI.TIENVT3", hours: 319.0 },
+            { hd: "TQAAF1594", block: "Xa Yen Son-001- L02", type: "Triển khai mới", staff: "TQGTI.NAMVD2", hours: 283.6 },
+            { hd: "TQAAF1623", block: "Xa Ham Yen-001- L02", type: "Triển khai mới", staff: "TQGTI.CAOTT", hours: 250.1 },
+            { hd: "TQAAF1600", block: "Xa Phu Luong-001- L02", type: "Triển khai mới", staff: "TQGTI.BINHLV6", hours: 248.3 },
+            { hd: "TQAAF1677", block: "Phuong An Tuong-001- L02", type: "Triển khai mới", staff: "TQGTI.GIANGVH2", hours: 246.0 },
+            { hd: "TQAAF1767", block: "Xa Ham Yen-001- L02", type: "Triển khai mới", staff: "TQGTI.CAOTT", hours: 175.5 },
+            { hd: "TQAAF1779", block: "Xa Yen Son-001- L02", type: "Triển khai mới", staff: "TQGTI.TUNGDT4", hours: 175.1 },
+            { hd: "TQAAF1800", block: "Xa Yen Son-001- L02", type: "Triển khai mới", staff: "TQGTI.TRUNGNX3", hours: 172.7 },
+            { hd: "TQAAF1774", block: "Xa Yen Son-001- L02", type: "Triển khai mới", staff: "TQGTI.TRUNGNX3", hours: 169.6 },
+            { hd: "TQAAF1812", block: "Phuong Minh Xuan-001- L03", type: "Triển khai mới", staff: "TQGTI.TUANQD", hours: 169.4 },
+            { hd: "TQAAF1820", block: "Phuong My Lam-001- L01", type: "Triển khai mới", staff: "TQGTI.QUYETNT1", hours: 165.2 }
+        ];
+
+        // Core Application State
+        let rawData = [...SAMPLE_DATA];
+        let filteredData = [...SAMPLE_DATA];
+        
+        // Table Pagination State (Configured to 10 rows per page)
+        let currentPage = 1;
+        const pageSize = 10;
+        let sortColumn = 'hours';
+        let sortDirection = 'desc';
+
+        // Alerts Table Pagination State
+        let currentAlertsPage = 1;
+        const alertsPageSize = 10;
+
+        // Staff Table Pagination State
+        let currentStaffPage = 1;
+        const staffPageSize = 10;
+
+        // Chart instances
+        let chartTypesInstance = null;
+        let chartBlockHoursInstance = null;
+        let chartHoursDistributionInstance = null;
+        let chartStaffOverdueInstance = null;
+
+        // Initialize Application on DOM Ready
+        window.onload = function() {
+            setupEventListeners();
+            processDataAndUpdateUI();
+            showToast("Đã tải dữ liệu mẫu thành công", "info");
+        };
+
+        function setupEventListeners() {
+            // Excel file upload listener
+            document.getElementById('excelFileInput').addEventListener('change', handleFileUpload);
+            
+            // Reload sample data
+            document.getElementById('btnReloadSample').addEventListener('click', () => {
+                rawData = [...SAMPLE_DATA];
+                document.getElementById('excelFileInput').value = '';
+                processDataAndUpdateUI();
+                showToast("Đã khôi phục dữ liệu mẫu!", "info");
+            });
+
+            // Filter change listeners
+            document.getElementById('searchInput').addEventListener('input', applyFilters);
+            document.getElementById('filterBlock').addEventListener('change', applyFilters);
+            document.getElementById('filterType').addEventListener('change', applyFilters);
+            document.getElementById('filterStaff').addEventListener('change', applyFilters);
+            document.getElementById('filterHourStatus').addEventListener('change', applyFilters);
+
+            // Password modal enter key press listener
+            document.getElementById('inputSecurityPassword').addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') verifyPasswordAndUpload();
+            });
+        }
+
+        // Security Password Verification Logic
+        function openPasswordModal() {
+            document.getElementById('inputSecurityPassword').value = '';
+            document.getElementById('passwordErrorMsg').classList.add('hidden');
+            document.getElementById('passwordModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('inputSecurityPassword').focus(), 100);
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').classList.add('hidden');
+        }
+
+        function verifyPasswordAndUpload() {
+            const pwd = document.getElementById('inputSecurityPassword').value.trim();
+            if (pwd === "1900") {
+                closePasswordModal();
+                document.getElementById('excelFileInput').click();
+            } else {
+                document.getElementById('passwordErrorMsg').classList.remove('hidden');
+            }
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true, cellStyles: true });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // Parse sheet to array of rows
+                    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: "" });
+
+                    if (!rows || rows.length <= 1) {
+                        showToast("File Excel không có dữ liệu hợp lệ!", "error");
+                        return;
+                    }
+
+                    // Dynamically locate header row in first 15 rows
+                    let headerRowIndex = 0;
+                    for (let r = 0; r < Math.min(15, rows.length); r++) {
+                        const rowStr = rows[r].map(c => String(c || '').toLowerCase()).join(" ");
+                        if (rowStr.includes("hợp đồng") || rowStr.includes("số hđ") || rowStr.includes("block") || rowStr.includes("triển khai") || rowStr.includes("tồn giờ")) {
+                            headerRowIndex = r;
+                            break;
+                        }
+                    }
+
+                    // STRICT Column Specifications:
+                    // Column D: Số HĐ (Col index 3)
+                    // Column Q: Block (Col index 16)
+                    // Column M: Loại triển khai (Col index 12)
+                    // Column R: Nhân sự (Col index 17)
+                    // Column W: Tồn giờ (Col index 22)
+                    let colD = 3;  // Column D
+                    let colQ = 16; // Column Q (Block)
+                    let colM = 12; // Column M
+                    let colR = 17; // Column R
+                    let colW = 22; // Column W
+
+                    if (rows[headerRowIndex]) {
+                        const headers = rows[headerRowIndex].map(h => String(h || '').trim().toLowerCase());
+                        headers.forEach((h, idx) => {
+                            const isNoteCol = h.includes("ghi chú") || h.includes("lý do") || h.includes("nội dung") || h.includes("diễn giải") || h.includes("chi tiết") || h.includes("ý kiến") || h.includes("hẹn");
+                            if (!isNoteCol) {
+                                if (h === "số hđ" || h === "mã hđ" || h === "số hợp đồng") colD = idx;
+                                if (h === "block" || h === "mã block" || h === "tên block") colQ = idx;
+                                if (h === "loại triển khai" || h === "loại tk") colM = idx;
+                                if (h === "nhân sự" || h === "nhân sự phụ trách") colR = idx;
+                                if (h === "tồn giờ" || h === "giờ tồn" || h === "tồn giờ (h)" || h === "thời gian tồn") colW = idx;
+                            }
+                        });
+                    }
+
+                    const parsedList = [];
+                    for (let i = headerRowIndex + 1; i < rows.length; i++) {
+                        const excelRowNum = i + 1; // 1-indexed row number in worksheet
+                        const row = rows[i];
+                        if (!row || row.length === 0) continue;
+
+                        // Retrieve cell data directly from Column Letters (D, Q, M, R, W)
+                        const cellValD = getCellValue(worksheet, row, 'D', colD, excelRowNum);
+                        const cellValQ = getCellValue(worksheet, row, 'Q', colQ, excelRowNum);
+                        const cellValM = getCellValue(worksheet, row, 'M', colM, excelRowNum);
+                        const cellValR = getCellValue(worksheet, row, 'R', colR, excelRowNum);
+                        const cellValW = getCellValue(worksheet, row, 'W', colW, excelRowNum);
+
+                        const rawHd = cellValD.formatted;
+                        const rawBlock = cellValQ.formatted;
+
+                        if (!rawHd && !rawBlock) continue;
+
+                        const hdVal = rawHd || `HĐ-${i}`;
+                        
+                        // Clean and normalize Block (Col Q)
+                        let blockVal = rawBlock.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+                        if (!blockVal || blockVal === "-" || blockVal.toLowerCase() === "null") blockVal = "Chưa xác định";
+
+                        // Clean and normalize Type (Col M)
+                        let typeVal = cellValM.formatted.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+                        if (!typeVal || typeVal === "-") typeVal = "Chưa phân loại";
+
+                        // Clean and normalize Staff (Col R)
+                        let staffVal = cellValR.formatted.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
+                        if (!staffVal || staffVal === "-") staffVal = "Chưa phân công";
+
+                        // Parse Hours strictly from Column W
+                        let hoursVal = parseColumnWHours(cellValW);
+
+                        parsedList.push({
+                            hd: hdVal,
+                            block: blockVal,
+                            type: typeVal,
+                            staff: staffVal,
+                            hours: Math.round(hoursVal * 10) / 10
+                        });
+                    }
+
+                    if (parsedList.length > 0) {
+                        rawData = parsedList;
+                        currentPage = 1;
+                        currentAlertsPage = 1;
+                        currentStaffPage = 1;
+                        processDataAndUpdateUI(true);
+                        showToast(`Đã tải ${parsedList.length} hợp đồng thành công!`, "success");
+                    } else {
+                        showToast("Không tìm thấy dữ liệu hợp đồng hợp lệ trong file!", "error");
+                    }
+                } catch (err) {
+                    console.error("Excel parse error:", err);
+                    showToast("Lỗi khi đọc file Excel! Kiểm tra lại định dạng.", "error");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function getCellValue(worksheet, rowArray, colLetter, colIdx, rowNum) {
+            const cellAddress = colLetter + rowNum;
+            const cell = worksheet[cellAddress];
+            if (cell !== undefined && cell !== null) {
+                if (cell.w !== undefined && cell.w !== null && String(cell.w).trim() !== "") {
+                    return { raw: cell.v, formatted: String(cell.w).trim(), cell: cell };
+                }
+                if (cell.v !== undefined && cell.v !== null && String(cell.v).trim() !== "") {
+                    return { raw: cell.v, formatted: String(cell.v).trim(), cell: cell };
+                }
+            }
+            if (rowArray && rowArray[colIdx] !== undefined && rowArray[colIdx] !== null) {
+                const val = String(rowArray[colIdx]).trim();
+                return { raw: rowArray[colIdx], formatted: val, cell: null };
+            }
+            return { raw: "", formatted: "", cell: null };
+        }
+
+        function parseColumnWHours(cellData) {
+            if (!cellData) return 0;
+            const { raw, formatted, cell } = cellData;
+
+            if (formatted && formatted.includes(':')) {
+                const parts = formatted.split(':');
+                if (parts.length >= 2) {
+                    const h = parseFloat(parts[0]) || 0;
+                    const m = parseFloat(parts[1]) || 0;
+                    const s = parts.length > 2 ? (parseFloat(parts[2]) || 0) : 0;
+                    return Math.round((h + (m / 60) + (s / 3600)) * 10) / 10;
+                }
+            }
+
+            if (cell && cell.t === 'n' && typeof raw === 'number') {
+                const fmt = (cell.z || '').toLowerCase();
+                if ((fmt.includes('[h]') || fmt.includes('hh:mm')) && raw < 100) {
+                    return Math.round((raw * 24) * 10) / 10;
+                }
+            }
+
+            const str = formatted || String(raw || '');
+            if (/[dhm]/i.test(str)) {
+                let total = 0;
+                const daysMatch = str.match(/(\d+(?:\.\d+)?)\s*d/i);
+                const hoursMatch = str.match(/(\d+(?:\.\d+)?)\s*h/i);
+                const minsMatch = str.match(/(\d+(?:\.\d+)?)\s*m/i);
+                if (daysMatch) total += parseFloat(daysMatch[1]) * 24;
+                if (hoursMatch) total += parseFloat(hoursMatch[1]);
+                if (minsMatch) total += parseFloat(minsMatch[1]) / 60;
+                if (total > 0) return Math.round(total * 10) / 10;
+            }
+
+            const cleanStr = str.replace(/,/g, '.').replace(/[^0-9.-]/g, '');
+            const num = parseFloat(cleanStr);
+            return isNaN(num) || num < 0 ? 0 : Math.round(num * 10) / 10;
+        }
+
+        function populateDropdownFilters() {
+            const blocks = [...new Set(rawData.map(d => d.block))].filter(b => b && b !== "Chưa xác định").sort();
+            const types = [...new Set(rawData.map(d => d.type))].filter(t => t && t !== "Chưa phân loại").sort();
+            const staffList = [...new Set(rawData.map(d => d.staff))].filter(s => s && s !== "Chưa phân công").sort();
+
+            const filterBlock = document.getElementById('filterBlock');
+            const filterType = document.getElementById('filterType');
+            const filterStaff = document.getElementById('filterStaff');
+
+            filterBlock.innerHTML = '<option value="">Tất cả Block</option>' + blocks.map(b => `<option value="${b}">${b}</option>`).join('');
+            filterType.innerHTML = '<option value="">Tất cả loại triển khai</option>' + types.map(t => `<option value="${t}">${t}</option>`).join('');
+            filterStaff.innerHTML = '<option value="">Tất cả nhân sự</option>' + staffList.map(s => `<option value="${s}">${s}</option>`).join('');
+        }
+
+        function applyFilters() {
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            const selectedBlock = document.getElementById('filterBlock').value;
+            const selectedType = document.getElementById('filterType').value;
+            const selectedStaff = document.getElementById('filterStaff').value;
+            const hourStatus = document.getElementById('filterHourStatus').value;
+
+            filteredData = rawData.filter(item => {
+                const matchSearch = item.hd.toLowerCase().includes(search) || 
+                                    item.block.toLowerCase().includes(search) || 
+                                    item.staff.toLowerCase().includes(search) || 
+                                    item.type.toLowerCase().includes(search);
+
+                const matchBlock = !selectedBlock || item.block === selectedBlock;
+                const matchType = !selectedType || item.type === selectedType;
+                const matchStaff = !selectedStaff || item.staff === selectedStaff;
+
+                let matchStatus = true;
+                if (hourStatus === 'over72') matchStatus = item.hours > 72;
+                else if (hourStatus === '48to72') matchStatus = item.hours >= 48 && item.hours <= 72;
+                else if (hourStatus === 'under48') matchStatus = item.hours < 48;
+
+                return matchSearch && matchBlock && matchType && matchStaff && matchStatus;
+            });
+
+            currentPage = 1;
+            currentAlertsPage = 1;
+            currentStaffPage = 1;
+            processDataAndUpdateUI(false);
+        }
+
+        function processDataAndUpdateUI(rebuildDropdowns = true) {
+            if (rebuildDropdowns) {
+                populateDropdownFilters();
+                filteredData = [...rawData];
+            }
+
+            updateKPIs();
+            updateAlertBanner();
+            renderCharts();
+            renderAlertsTable();
+            renderFullTable();
+            renderStaffTable();
+        }
+
+        function updateKPIs() {
+            const totalHD = filteredData.length;
+            const uniqueStaff = new Set(filteredData.map(d => d.staff).filter(s => s && s !== "Chưa phân công")).size;
+            const overdue72Count = filteredData.filter(d => d.hours > 72).length;
+            
+            const overduePercent = totalHD > 0 ? ((overdue72Count / totalHD) * 100).toFixed(1) : "0";
+
+            document.getElementById('kpiTotalHD').innerText = totalHD;
+            document.getElementById('kpiTotalStaff').innerText = uniqueStaff;
+            document.getElementById('kpiOverdue72').innerText = overdue72Count;
+            document.getElementById('kpiOverduePercent').innerText = `${overduePercent}% tổng số HĐ`;
+
+            document.getElementById('tabAlertBadge').innerText = overdue72Count;
+            document.getElementById('alertCountBadge').innerText = `${overdue72Count} HĐ`;
+        }
+
+        function updateAlertBanner() {
+            const overdue72 = rawData.filter(d => d.hours > 72);
+            const banner = document.getElementById('criticalAlertBanner');
+            
+            if (overdue72.length > 0) {
+                banner.classList.remove('hidden');
+                document.getElementById('alertBannerText').innerHTML = 
+                    `Hiện tại có <strong class="text-white">${overdue72.length} hợp đồng</strong> có tồn giờ lớn hơn <strong>72 giờ</strong>. Cần liên hệ nhân sự phụ trách gấp!`;
+            } else {
+                banner.classList.add('hidden');
+            }
+        }
+
+        function renderCharts() {
+            // Chart 1: Types Doughnut
+            const typeCounts = {};
+            filteredData.forEach(d => {
+                typeCounts[d.type] = (typeCounts[d.type] || 0) + 1;
+            });
+
+            const ctxTypes = document.getElementById('chartTypes').getContext('2d');
+            if (chartTypesInstance) chartTypesInstance.destroy();
+            chartTypesInstance = new Chart(ctxTypes, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(typeCounts),
+                    datasets: [{
+                        data: Object.values(typeCounts),
+                        backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'],
+                        borderWidth: 2,
+                        borderColor: '#0f172a'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 } } }
+                    }
+                }
+            });
+
+            // Chart 2: Block Average Hours Bar
+            const blockHours = {};
+            const blockCounts = {};
+            filteredData.forEach(d => {
+                blockHours[d.block] = (blockHours[d.block] || 0) + d.hours;
+                blockCounts[d.block] = (blockCounts[d.block] || 0) + 1;
+            });
+
+            let blockStats = Object.keys(blockHours).map(b => {
+                const totalH = blockHours[b];
+                const count = blockCounts[b];
+                const avgH = count > 0 ? parseFloat((totalH / count).toFixed(1)) : 0;
+                return { block: b, avgHours: avgH, count: count, totalHours: Math.round(totalH * 10) / 10 };
+            });
+
+            blockStats.sort((a, b) => b.avgHours - a.avgHours);
+
+            const blockLimitSelect = document.getElementById('blockChartLimit') ? document.getElementById('blockChartLimit').value : '10';
+            let displayStats = blockStats;
+            if (blockLimitSelect !== 'all') {
+                const limit = parseInt(blockLimitSelect) || 10;
+                displayStats = blockStats.slice(0, limit);
+            }
+
+            const blockLabels = displayStats.map(s => s.block);
+            const blockAvgHours = displayStats.map(s => s.avgHours);
+
+            const ctxBlock = document.getElementById('chartBlockHours').getContext('2d');
+            if (chartBlockHoursInstance) chartBlockHoursInstance.destroy();
+            chartBlockHoursInstance = new Chart(ctxBlock, {
+                type: 'bar',
+                data: {
+                    labels: blockLabels,
+                    datasets: [{
+                        label: 'Tồn Giờ TB (Giờ)',
+                        data: blockAvgHours,
+                        backgroundColor: blockAvgHours.map(val => val > 72 ? '#ef4444' : '#6366f1'),
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { 
+                            ticks: { 
+                                color: '#94a3b8',
+                                font: { size: 10 },
+                                maxRotation: 45,
+                                minRotation: 25,
+                                callback: function(val) {
+                                    const label = this.getLabelForValue(val);
+                                    return label.length > 18 ? label.substring(0, 16) + '...' : label;
+                                }
+                            }, 
+                            grid: { display: false } 
+                        },
+                        y: { 
+                            ticks: { color: '#94a3b8' }, 
+                            grid: { color: '#334155' },
+                            title: { display: true, text: 'Số giờ tồn TB', color: '#64748b', font: { size: 11 } }
+                        }
+                    },
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: function(items) {
+                                    return items[0] ? displayStats[items[0].dataIndex].block : '';
+                                },
+                                label: function(context) {
+                                    const stat = displayStats[context.dataIndex];
+                                    return [
+                                        ` Tồn giờ trung bình: ${stat.avgHours} giờ`,
+                                        ` Số lượng HĐ thuộc Block: ${stat.count} HĐ`,
+                                        ` Tổng giờ tồn: ${stat.totalHours.toFixed(1)} giờ`
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Chart 3: Hours Distribution Histogram
+            let rangeUnder24 = 0, range24To48 = 0, range48To72 = 0, rangeOver72 = 0;
+            filteredData.forEach(d => {
+                if (d.hours < 24) rangeUnder24++;
+                else if (d.hours <= 48) range24To48++;
+                else if (d.hours <= 72) range48To72++;
+                else rangeOver72++;
+            });
+
+            const ctxDist = document.getElementById('chartHoursDistribution').getContext('2d');
+            if (chartHoursDistributionInstance) chartHoursDistributionInstance.destroy();
+            chartHoursDistributionInstance = new Chart(ctxDist, {
+                type: 'bar',
+                data: {
+                    labels: ['< 24h (Tốt)', '24h - 48h (Đạt)', '48h - 72h (Sắp quá hạn)', '> 72h (⚠️ Cảnh Báo)'],
+                    datasets: [{
+                        data: [rangeUnder24, range24To48, range48To72, rangeOver72],
+                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function renderAlertsTable() {
+            const tbody = document.getElementById('alertsTableBody');
+            const over72Data = filteredData.filter(d => d.hours > 72).sort((a,b) => b.hours - a.hours);
+
+            if (over72Data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="py-8 text-center text-slate-500">
+                            <i class="fa-solid fa-circle-check text-emerald-500 text-2xl mb-2 block"></i>
+                            Tuyệt vời! Không có hợp đồng nào có tồn giờ > 72h trong tập dữ liệu lọc.
+                        </td>
+                    </tr>`;
+                document.getElementById('alertsPaginationInfo').innerText = `Trang 0 / 0 (0 bản ghi)`;
+                document.getElementById('alertsPageIndicator').innerText = "0";
+                document.getElementById('btnPrevAlertsPage').disabled = true;
+                document.getElementById('btnNextAlertsPage').disabled = true;
+                return;
+            }
+
+            // Pagination calculation for Alerts Table (Strictly 10 rows per page)
+            const totalAlertsPages = Math.ceil(over72Data.length / alertsPageSize) || 1;
+            if (currentAlertsPage > totalAlertsPages) currentAlertsPage = totalAlertsPages;
+
+            const startIdx = (currentAlertsPage - 1) * alertsPageSize;
+            const pageAlertsData = over72Data.slice(startIdx, startIdx + alertsPageSize);
+
+            tbody.innerHTML = pageAlertsData.map((item, idx) => `
+                <tr class="hover:bg-red-950/20 transition border-b border-red-900/20">
+                    <td class="py-3 px-4 text-slate-400 font-mono">${startIdx + idx + 1}</td>
+                    <td class="py-3 px-4 font-bold text-white">${escapeHtml(item.hd)}</td>
+                    <td class="py-3 px-4 text-slate-300"><i class="fa-regular fa-building text-slate-500 mr-1.5"></i>${escapeHtml(item.block)}</td>
+                    <td class="py-3 px-4"><span class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">${escapeHtml(item.type)}</span></td>
+                    <td class="py-3 px-4 font-medium text-slate-200"><i class="fa-regular fa-user text-slate-400 mr-1.5"></i>${escapeHtml(item.staff)}</td>
+                    <td class="py-3 px-4 text-right font-extrabold text-red-400 text-sm font-mono">${item.hours}h</td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-red-500/20 text-red-400 border border-red-500/40 text-sm animate-pulse" title="Tồn > 72 giờ">
+                            🚨
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Update Pagination UI
+            document.getElementById('alertsPaginationInfo').innerText = `Trang ${currentAlertsPage} / ${totalAlertsPages} (${over72Data.length} bản ghi)`;
+            document.getElementById('alertsPageIndicator').innerText = currentAlertsPage;
+            document.getElementById('btnPrevAlertsPage').disabled = currentAlertsPage === 1;
+            document.getElementById('btnNextAlertsPage').disabled = currentAlertsPage === totalAlertsPages;
+        }
+
+        function changeAlertsPage(delta) {
+            currentAlertsPage += delta;
+            renderAlertsTable();
+        }
+
+        function renderFullTable() {
+            const tbody = document.getElementById('fullTableBody');
+            
+            const sorted = [...filteredData].sort((a, b) => {
+                let valA = a[sortColumn];
+                let valB = b[sortColumn];
+
+                if (typeof valA === 'string') valA = valA.toLowerCase();
+                if (typeof valB === 'string') valB = valB.toLowerCase();
+
+                if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+                if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            document.getElementById('tableRecordCount').innerText = `Hiển thị ${sorted.length} hợp đồng`;
+
+            // Pagination calculation (Strictly 10 rows per page)
+            const totalPages = Math.ceil(sorted.length / pageSize) || 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIndex = (currentPage - 1) * pageSize;
+            const pageData = sorted.slice(startIndex, startIndex + pageSize);
+
+            if (pageData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="py-8 text-center text-slate-500">
+                            Không tìm thấy hợp đồng phù hợp với bộ lọc.
+                        </td>
+                    </tr>`;
+            } else {
+                tbody.innerHTML = pageData.map((item, idx) => {
+                    const isAlert = item.hours > 72;
+                    const isWarning = item.hours >= 48 && item.hours <= 72;
+
+                    return `
+                    <tr class="hover:bg-slate-800/50 transition ${isAlert ? 'bg-red-950/20' : ''}">
+                        <td class="py-3 px-4 text-slate-500 font-mono text-[11px]">${startIndex + idx + 1}</td>
+                        <td class="py-3 px-4 font-semibold text-white font-mono">${escapeHtml(item.hd)}</td>
+                        <td class="py-3 px-4 text-slate-300">${escapeHtml(item.block)}</td>
+                        <td class="py-3 px-4"><span class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">${escapeHtml(item.type)}</span></td>
+                        <td class="py-3 px-4 text-slate-200">${escapeHtml(item.staff)}</td>
+                        <td class="py-3 px-4 text-right font-bold font-mono ${isAlert ? 'text-red-400 text-sm' : isWarning ? 'text-amber-400' : 'text-emerald-400'}">
+                            ${item.hours} giờ
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            ${isAlert ? 
+                                `<span class="bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded text-[10px] font-bold">🚨 > 72h</span>` : 
+                              isWarning ? 
+                                `<span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded text-[10px]">⚠️ 48-72h</span>` : 
+                                `<span class="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px]">✅ An toàn</span>`
+                            }
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
+
+            // Update Pagination UI
+            document.getElementById('paginationInfo').innerText = `Trang ${currentPage} / ${totalPages} (${sorted.length} bản ghi)`;
+            document.getElementById('pageIndicator').innerText = currentPage;
+            document.getElementById('btnPrevPage').disabled = currentPage === 1;
+            document.getElementById('btnNextPage').disabled = currentPage === totalPages;
+        }
+
+        function sortTable(col) {
+            if (sortColumn === col) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = col;
+                sortDirection = 'desc';
+            }
+            renderFullTable();
+        }
+
+        function changePage(delta) {
+            currentPage += delta;
+            renderFullTable();
+        }
+
+        function renderStaffTable() {
+            const staffStats = {};
+
+            filteredData.forEach(d => {
+                if (!staffStats[d.staff]) {
+                    staffStats[d.staff] = { count: 0, overdue: 0, totalHours: 0 };
+                }
+                staffStats[d.staff].count += 1;
+                staffStats[d.staff].totalHours += d.hours;
+                if (d.hours > 72) staffStats[d.staff].overdue += 1;
+            });
+
+            const staffList = Object.keys(staffStats).sort((a,b) => staffStats[b].overdue - staffStats[a].overdue);
+
+            // Pagination calculation for Staff Table (Strictly 10 rows per page)
+            const totalStaffPages = Math.ceil(staffList.length / staffPageSize) || 1;
+            if (currentStaffPage > totalStaffPages) currentStaffPage = totalStaffPages;
+
+            const startStaffIdx = (currentStaffPage - 1) * staffPageSize;
+            const pageStaffList = staffList.slice(startStaffIdx, startStaffIdx + staffPageSize);
+
+            const tbody = document.getElementById('staffTableBody');
+            
+            if (pageStaffList.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="py-8 text-center text-slate-500">Không có dữ liệu nhân sự.</td>
+                    </tr>`;
+            } else {
+                tbody.innerHTML = pageStaffList.map(name => {
+                    const stat = staffStats[name];
+                    const avgHours = (stat.totalHours / stat.count).toFixed(1);
+                    const overdueRate = ((stat.overdue / stat.count) * 100).toFixed(0);
+                    const cleanTotalHours = (Math.round(stat.totalHours * 10) / 10).toFixed(1);
+
+                    return `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="py-3 px-4 font-semibold text-white flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-full bg-slate-800 text-blue-400 flex items-center justify-center text-xs font-bold border border-slate-700 flex-shrink-0">
+                                ${name.charAt(0)}
+                            </div>
+                            <span class="truncate max-w-xs">${escapeHtml(name)}</span>
+                        </td>
+                        <td class="py-3 px-4 text-center text-slate-300 font-mono">${stat.count}</td>
+                        <td class="py-3 px-4 text-center font-bold ${stat.overdue > 0 ? 'text-red-400' : 'text-slate-400'} font-mono">${stat.overdue}</td>
+                        <td class="py-3 px-4 text-right font-mono text-slate-200">${cleanTotalHours} h</td>
+                        <td class="py-3 px-4 text-right font-mono text-slate-300">${avgHours} h</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${stat.overdue > 0 ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/10 text-emerald-400'}">
+                                ${overdueRate}%
+                            </span>
+                        </td>
+                    </tr>`;
+                }).join('');
+            }
+
+            // Update Staff Pagination Footer UI
+            document.getElementById('staffPaginationInfo').innerText = `Trang ${currentStaffPage} / ${totalStaffPages} (${staffList.length} nhân sự)`;
+            document.getElementById('staffPageIndicator').innerText = currentStaffPage;
+            document.getElementById('btnPrevStaffPage').disabled = currentStaffPage === 1;
+            document.getElementById('btnNextStaffPage').disabled = currentStaffPage === totalStaffPages;
+
+            // Render Staff Overdue Chart
+            const ctxStaff = document.getElementById('chartStaffOverdue').getContext('2d');
+            if (chartStaffOverdueInstance) chartStaffOverdueInstance.destroy();
+            chartStaffOverdueInstance = new Chart(ctxStaff, {
+                type: 'bar',
+                data: {
+                    labels: staffList,
+                    datasets: [
+                        {
+                            label: 'Số HĐ Tồn > 72h',
+                            data: staffList.map(s => staffStats[s].overdue),
+                            backgroundColor: '#ef4444',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'Tổng HĐ Phụ Trách',
+                            data: staffList.map(s => staffStats[s].count),
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { display: false } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                    },
+                    plugins: { legend: { labels: { color: '#94a3b8' } } }
+                }
+            });
+        }
+
+        function changeStaffPage(delta) {
+            currentStaffPage += delta;
+            renderStaffTable();
+        }
+
+        function switchTab(tabKey) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white', 'shadow');
+                btn.classList.add('text-slate-400');
+            });
+
+            if (tabKey === 'overview') {
+                document.getElementById('tabViewOverview').classList.remove('hidden');
+                document.getElementById('tabBtnOverview').classList.add('bg-blue-600', 'text-white', 'shadow');
+            } else if (tabKey === 'alerts') {
+                document.getElementById('tabViewAlerts').classList.remove('hidden');
+                document.getElementById('tabBtnAlerts').classList.add('bg-blue-600', 'text-white', 'shadow');
+            } else if (tabKey === 'table') {
+                document.getElementById('tabViewTable').classList.remove('hidden');
+                document.getElementById('tabBtnTable').classList.add('bg-blue-600', 'text-white', 'shadow');
+            } else if (tabKey === 'staff') {
+                document.getElementById('tabViewStaff').classList.remove('hidden');
+                document.getElementById('tabBtnStaff').classList.add('bg-blue-600', 'text-white', 'shadow');
+            }
+        }
+
+        function exportAlertsCSV() {
+            const alerts = filteredData.filter(d => d.hours > 72);
+            if (alerts.length === 0) {
+                showToast("Không có dữ liệu cảnh báo để xuất!", "info");
+                return;
+            }
+            downloadCSV(alerts, "TK_Canh_Bao_Ton_Tren_72h.csv");
+        }
+
+        function exportFullCSV() {
+            downloadCSV(filteredData, "TK_Danh_Sach_Trien_Khai.csv");
+        }
+
+        function downloadCSV(dataArray, filename) {
+            let csvContent = "\uFEFFSố HĐ,Block,Loại Triển Khai,Nhân Sự,Tồn Giờ\n";
+            dataArray.forEach(row => {
+                csvContent += `"${row.hd}","${row.block}","${row.type}","${row.staff}",${row.hours}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast(`Đã xuất file ${filename}`, "success");
+        }
+
+        function showToast(message, type = "info") {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const text = document.getElementById('toastMessage');
+
+            text.innerText = message;
+
+            if (type === 'error') {
+                icon.className = "fa-solid fa-circle-xmark text-red-400 text-lg";
+            } else if (type === 'success') {
+                icon.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
+            } else {
+                icon.className = "fa-solid fa-circle-info text-blue-400 text-lg";
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
