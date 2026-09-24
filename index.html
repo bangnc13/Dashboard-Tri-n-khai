@@ -206,7 +206,7 @@
             <!-- Dynamic Filters -->
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                 <div>
-                    <label class="block text-slate-400 mb-1 font-medium">Lọc theo Block</label>
+                    <label class="block text-slate-400 mb-1 font-medium">Lọc theo Block (Cột Q)</label>
                     <select id="filterBlock" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-blue-500 transition">
                         <option value="">Tất cả Block</option>
                     </select>
@@ -310,7 +310,7 @@
                             <tr>
                                 <th class="py-3 px-4">STT</th>
                                 <th class="py-3 px-4">Số HĐ</th>
-                                <th class="py-3 px-4">Block</th>
+                                <th class="py-3 px-4">Block (Cột Q)</th>
                                 <th class="py-3 px-4">TG Tạo PTC (Cột L)</th>
                                 <th class="py-3 px-4">Loại Triển Khai</th>
                                 <th class="py-3 px-4">Nhân Sự</th>
@@ -363,7 +363,7 @@
                                     Số HĐ <i class="fa-solid fa-sort text-[10px] ml-1"></i>
                                 </th>
                                 <th class="py-3 px-4 cursor-pointer hover:text-white" onclick="sortTable('block')">
-                                    Block <i class="fa-solid fa-sort text-[10px] ml-1"></i>
+                                    Block (Cột Q) <i class="fa-solid fa-sort text-[10px] ml-1"></i>
                                 </th>
                                 <th class="py-3 px-4">TG Tạo PTC (Cột L)</th>
                                 <th class="py-3 px-4 cursor-pointer hover:text-white" onclick="sortTable('type')">
@@ -622,12 +622,12 @@
 
                     // Column Indices based on standard raw excel structure:
                     // Col D (Index 3): Số HĐ
-                    // Col F/Q (Index 5/16): Block
+                    // Col Q (Index 16): Block
                     // Col L (Index 11): TG tạo PTC
                     // Col M (Index 12): Loại triển khai
                     // Col R (Index 17): Nhân sự
                     let colD = 3;  
-                    let colBlock = 5; 
+                    let colBlock = 16; // Chuyển mặc định lấy Cột Q (Index 16)
                     let colL = 11; // Col L - TG Tạo PTC
                     let colM = 12; 
                     let colR = 17; 
@@ -653,7 +653,12 @@
                         if (!row || row.length === 0) continue;
 
                         const cellValD = getCellValue(worksheet, row, 'D', colD, excelRowNum);
-                        const cellValBlock = getCellValue(worksheet, row, 'F', colBlock, excelRowNum);
+                        // Ưu tiên đọc từ cột Q trước, nếu trống thử fallback về chỉ số colBlock
+                        let cellValBlock = getCellValue(worksheet, row, 'Q', 16, excelRowNum);
+                        if (!cellValBlock.formatted && colBlock !== 16) {
+                            cellValBlock = getCellValue(worksheet, row, 'F', colBlock, excelRowNum);
+                        }
+
                         const cellValL = getCellValue(worksheet, row, 'L', colL, excelRowNum);
                         const cellValM = getCellValue(worksheet, row, 'M', colM, excelRowNum);
                         const cellValR = getCellValue(worksheet, row, 'R', colR, excelRowNum);
