@@ -13,7 +13,6 @@
                 extend: {
                     colors: {
                         brand: {
-                            50: '#f0f7ff',
                             100: '#e0effe',
                             500: '#2563eb',
                             600: '#1d4ed8',
@@ -297,7 +296,7 @@
                             <i class="fa-solid fa-bell flex animate-bounce"></i>
                             Danh Sách Hợp Đồng Tồn Giờ > 72 Giờ Cần Xử Lý Báo Cấp
                         </h2>
-                        <p class="text-xs text-slate-400 mt-0.5">Các tuyến triển khai dưới đây đã vượt quá 72 giờ tính từ thời gian tạo PTC (Cột L).</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Các tuyến triển khai dưới đây đã vượt quá 72 giờ.</p>
                     </div>
                     <button onclick="exportAlertsCSV()" class="bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 text-xs font-semibold px-3.5 py-2 rounded-xl transition flex items-center gap-2 self-start sm:self-auto">
                         <i class="fa-solid fa-download"></i> Xuất file cảnh báo
@@ -311,7 +310,7 @@
                                 <th class="py-3 px-4">STT</th>
                                 <th class="py-3 px-4">Số HĐ</th>
                                 <th class="py-3 px-4">Block (Cột Q)</th>
-                                <th class="py-3 px-4">TG Tạo PTC (Cột L)</th>
+                                <th class="py-3 px-4">TG Tạo PTC</th>
                                 <th class="py-3 px-4">Loại Triển Khai</th>
                                 <th class="py-3 px-4">Nhân Sự</th>
                                 <th class="py-3 px-4 text-right">Tồn Giờ (Tính Tự Động)</th>
@@ -365,7 +364,7 @@
                                 <th class="py-3 px-4 cursor-pointer hover:text-white" onclick="sortTable('block')">
                                     Block (Cột Q) <i class="fa-solid fa-sort text-[10px] ml-1"></i>
                                 </th>
-                                <th class="py-3 px-4">TG Tạo PTC (Cột L)</th>
+                                <th class="py-3 px-4">TG Tạo PTC</th>
                                 <th class="py-3 px-4 cursor-pointer hover:text-white" onclick="sortTable('type')">
                                     Loại Triển Khai <i class="fa-solid fa-sort text-[10px] ml-1"></i>
                                 </th>
