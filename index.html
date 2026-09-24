@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Quản Lý Triển Khai & Cảnh Báo Tồn Giờ</title>
+    <title>Dashboard Quản Lý Triển Khai & Cảnh Báo Tồn Giờ Tự Động</title>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -92,9 +92,9 @@
                 <div>
                     <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
                         Dashboard Quản Lý Triển Khai
-                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">BangNC13</span>
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">TK.xlsx</span>
                     </h1>
-                    <p class="text-xs text-slate-400">Dashboard-TQG</p>
+                    <p class="text-xs text-slate-400">Tự động tính Tồn Giờ = Thời gian hiện tại - Cột L (TG Tạo PTC)</p>
                 </div>
             </div>
 
@@ -102,9 +102,14 @@
             <div class="flex items-center gap-3">
                 <button onclick="openPasswordModal()" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-blue-600/20 flex items-center gap-2 transition duration-200 cursor-pointer">
                     <i class="fa-solid fa-file-excel text-base"></i>
-                    <span>Import</span>
+                    <span>Tải Data Thô (TK.xlsx)</span>
                 </button>
                 <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="hidden">
+                
+                <button id="btnReloadSample" class="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 font-medium text-xs sm:text-sm px-3.5 py-2.5 rounded-xl transition duration-200 flex items-center gap-2" title="Tải lại dữ liệu mẫu">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                    <span class="hidden sm:inline">Dữ liệu mẫu</span>
+                </button>
             </div>
         </div>
     </header>
@@ -112,7 +117,7 @@
     <!-- Main Content Area -->
     <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-        <!-- Critical Overdue Alert Banner (Dynamic) -->
+        <!-- Critical Overdue Alert Banner -->
         <div id="criticalAlertBanner" class="hidden rounded-2xl bg-gradient-to-r from-red-950/80 via-red-900/40 to-slate-900 border border-red-500/40 p-4 shadow-xl alert-pulse">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div class="flex items-center space-x-3.5">
@@ -136,9 +141,8 @@
             </div>
         </div>
 
-        <!-- KPI Metrics Grid (Updated to 3 Cards) -->
+        <!-- KPI Metrics Grid -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <!-- Card 1: Tổng Số HĐ -->
             <div class="glass-card rounded-2xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Tổng Số HĐ</span>
@@ -152,7 +156,6 @@
                 </div>
             </div>
 
-            <!-- Card 2: Nhân Sự Triển Khai -->
             <div class="glass-card rounded-2xl p-4 flex flex-col justify-between hover:border-slate-700 transition">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Nhân Sự</span>
@@ -166,7 +169,6 @@
                 </div>
             </div>
 
-            <!-- Card 3: Cảnh Báo Tồn > 72h -->
             <div class="glass-card rounded-2xl p-4 flex flex-col justify-between border-red-500/30 bg-gradient-to-br from-red-950/20 to-slate-900 hover:border-red-500/50 transition">
                 <div class="flex items-center justify-between">
                     <span class="text-xs font-bold uppercase tracking-wider text-red-400">Cảnh Báo > 72h</span>
@@ -184,7 +186,6 @@
         <!-- Controls & Filters Section -->
         <div class="glass-card rounded-2xl p-4 sm:p-5 space-y-4">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-                <!-- Navigation Tabs -->
                 <div class="flex items-center space-x-1 sm:space-x-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-800 overflow-x-auto">
                     <button onclick="switchTab('overview')" id="tabBtnOverview" class="tab-btn px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition bg-blue-600 text-white shadow">
                         <i class="fa-solid fa-chart-pie mr-1.5"></i> Tổng Quan
@@ -201,7 +202,6 @@
                     </button>
                 </div>
 
-                <!-- Search Input -->
                 <div class="relative w-full lg:w-72">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                     <input type="text" id="searchInput" placeholder="Tìm theo Số HĐ, Nhân sự, Block..." class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition">
@@ -243,7 +243,6 @@
         <!-- TAB 1: OVERVIEW CHARTS -->
         <div id="tabViewOverview" class="tab-content space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Chart 1: Phân bổ Tồn giờ theo Loại triển khai -->
                 <div class="glass-card rounded-2xl p-5">
                     <div class="flex items-center justify-between mb-4">
                         <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -256,7 +255,6 @@
                     </div>
                 </div>
 
-                <!-- Chart 2: Top Block có giờ tồn trung bình cao nhất -->
                 <div class="glass-card rounded-2xl p-5">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                         <div>
@@ -264,7 +262,7 @@
                                 <i class="fa-solid fa-city text-indigo-400"></i>
                                 Tồn Giờ Trung Bình Theo Block
                             </h2>
-                            <p class="text-[11px] text-slate-400 mt-0.5">Công thức: Tổng giờ tồn / Số lượng HĐ thuộc Block</p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Công thức: Tự động tính (Hiện tại - Cột L) / Số HĐ thuộc Block</p>
                         </div>
                         <select id="blockChartLimit" onchange="renderCharts()" class="bg-slate-900 border border-slate-800 text-slate-300 text-xs rounded-lg px-2.5 py-1 focus:outline-none focus:border-blue-500 self-start sm:self-auto">
                             <option value="10" selected>Top 10 Block</option>
@@ -279,7 +277,6 @@
                 </div>
             </div>
 
-            <!-- Chart 3: Phân bố khoảng giờ tồn -->
             <div class="glass-card rounded-2xl p-5">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -296,7 +293,7 @@
             </div>
         </div>
 
-        <!-- TAB 2: ALERTS CENTER (>72 Hours) -->
+        <!-- TAB 2: ALERTS CENTER -->
         <div id="tabViewAlerts" class="tab-content hidden space-y-4">
             <div class="glass-card rounded-2xl p-5 border-red-500/30">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -305,7 +302,7 @@
                             <i class="fa-solid fa-bell flex animate-bounce"></i>
                             Danh Sách Hợp Đồng Tồn Giờ > 72 Giờ Cần Xử Lý Báo Cấp
                         </h2>
-                        <p class="text-xs text-slate-400 mt-0.5">Các tuyến triển khai dưới đây đã vượt quá 72 giờ chưa hoàn tất.</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Các tuyến triển khai dưới đây đã vượt quá 72 giờ tính từ thời gian tạo PTC (Cột L).</p>
                     </div>
                     <button onclick="exportAlertsCSV()" class="bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 text-xs font-semibold px-3.5 py-2 rounded-xl transition flex items-center gap-2 self-start sm:self-auto">
                         <i class="fa-solid fa-download"></i> Xuất file cảnh báo
@@ -319,19 +316,18 @@
                                 <th class="py-3 px-4">STT</th>
                                 <th class="py-3 px-4">Số HĐ</th>
                                 <th class="py-3 px-4">Block</th>
-                                <th class="py-3 px-4">Ghi chú</th>
-                                <th class="py-3 px-4">Nhân Sự Phụ Trách</th>
-                                <th class="py-3 px-4 text-right">Tồn Giờ</th>
+                                <th class="py-3 px-4">TG Tạo PTC (Cột L)</th>
+                                <th class="py-3 px-4">Loại Triển Khai</th>
+                                <th class="py-3 px-4">Nhân Sự</th>
+                                <th class="py-3 px-4 text-right">Tồn Giờ (Tính Tự Động)</th>
                                 <th class="py-3 px-4 text-center">Trạng Thái</th>
                             </tr>
                         </thead>
                         <tbody id="alertsTableBody" class="divide-y divide-slate-800/60 font-medium">
-                            <!-- Populated dynamically -->
                         </tbody>
                     </table>
                 </div>
 
-                <!-- Alerts Table Pagination Footer (10 rows per page) -->
                 <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-red-900/30 text-xs text-slate-400 mt-3">
                     <div id="alertsPaginationInfo">Trang 1 / 1</div>
                     <div class="flex items-center space-x-2">
@@ -347,7 +343,7 @@
             </div>
         </div>
 
-        <!-- TAB 3: FULL CONTRACT DATA TABLE -->
+        <!-- TAB 3: FULL DATA TABLE -->
         <div id="tabViewTable" class="tab-content hidden space-y-4">
             <div class="glass-card rounded-2xl p-5">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
@@ -374,6 +370,7 @@
                                 <th class="py-3 px-4 cursor-pointer hover:text-white" onclick="sortTable('block')">
                                     Block <i class="fa-solid fa-sort text-[10px] ml-1"></i>
                                 </th>
+                                <th class="py-3 px-4">TG Tạo PTC (Cột L)</th>
                                 <th class="py-3 px-4 cursor-pointer hover:text-white" onclick="sortTable('type')">
                                     Loại Triển Khai <i class="fa-solid fa-sort text-[10px] ml-1"></i>
                                 </th>
@@ -381,18 +378,16 @@
                                     Nhân Sự <i class="fa-solid fa-sort text-[10px] ml-1"></i>
                                 </th>
                                 <th class="py-3 px-4 text-right cursor-pointer hover:text-white" onclick="sortTable('hours')">
-                                    Tồn Giờ <i class="fa-solid fa-sort text-[10px] ml-1"></i>
+                                    Tồn Giờ Tự Tính <i class="fa-solid fa-sort text-[10px] ml-1"></i>
                                 </th>
                                 <th class="py-3 px-4 text-center">Cảnh Báo</th>
                             </tr>
                         </thead>
                         <tbody id="fullTableBody" class="divide-y divide-slate-800/60 font-medium">
-                            <!-- Populated dynamically -->
                         </tbody>
                     </table>
                 </div>
 
-                <!-- Pagination Footer (Configured to 10 rows per page) -->
                 <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-800/80 text-xs text-slate-400">
                     <div id="paginationInfo">Trang 1 / 1</div>
                     <div class="flex items-center space-x-2">
@@ -408,7 +403,7 @@
             </div>
         </div>
 
-        <!-- TAB 4: STAFF PERFORMANCE & BOTTLENECK -->
+        <!-- TAB 4: STAFF PERFORMANCE -->
         <div id="tabViewStaff" class="tab-content hidden space-y-6">
             <div class="glass-card rounded-2xl p-5">
                 <div class="flex items-center justify-between mb-4">
@@ -440,12 +435,10 @@
                             </tr>
                         </thead>
                         <tbody id="staffTableBody" class="divide-y divide-slate-800/60 font-medium">
-                            <!-- Populated dynamically -->
                         </tbody>
                     </table>
                 </div>
 
-                <!-- Staff Table Pagination Controls (10 rows per page) -->
                 <div class="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-800/80 text-xs text-slate-400 mt-3">
                     <div id="staffPaginationInfo">Trang 1 / 1</div>
                     <div class="flex items-center space-x-2">
@@ -465,17 +458,17 @@
 
     <footer class="bg-slate-900 border-t border-slate-800 py-4 mt-8">
         <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
-            Hệ thống Dashboard Quản Lý Triển Khai-TQG
+            Hệ thống Dashboard Quản Lý Triển Khai TQG
         </div>
     </footer>
 
-    <!-- Notification Toast Modal -->
+    <!-- Toast Notification -->
     <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-slate-800 text-white border border-slate-700 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
         <i id="toastIcon" class="fa-solid fa-circle-info text-blue-400 text-lg"></i>
         <span id="toastMessage" class="text-xs font-medium">Thông báo hệ thống</span>
     </div>
 
-    <!-- Security Password Verification Modal -->
+    <!-- Security Password Modal -->
     <div id="passwordModal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
             <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
@@ -511,74 +504,61 @@
     </div>
 
     <script>
-        // Sample fallback dataset matching exact specifications
+        // Sample fallback dataset
         const SAMPLE_DATA = [
-            { hd: "TQAAF1352", block: "Xa Hung Duc-001- L01", type: "Triển khai mới", staff: "TQGTI.BINHTH1", hours: 484.5 },
-            { hd: "TQAAC3881", block: "Xa Hung Duc-001- L01", type: "KH nâng cấp dịch vụ gia tăng", staff: "TQGTI.BINHTH1", hours: 392.7 },
-            { hd: "TQAAC8438", block: "Xa Hung Duc-001- L01", type: "KH nâng cấp dịch vụ gia tăng", staff: "TQGTI.BINHTH1", hours: 384.0 },
-            { hd: "TQAAF1563", block: "Phuong Minh Xuan-001- L05", type: "Triển khai mới", staff: "TQGTI.TUANQD", hours: 362.6 },
-            { hd: "TQAAF1606", block: "Xa Chiem Hoa-001- L04", type: "Triển khai mới", staff: "TQGTI.TIENVT3", hours: 319.0 },
-            { hd: "TQAAF1594", block: "Xa Yen Son-001- L02", type: "Triển khai mới", staff: "TQGTI.NAMVD2", hours: 283.6 },
-            { hd: "TQAAF1623", block: "Xa Ham Yen-001- L02", type: "Triển khai mới", staff: "TQGTI.CAOTT", hours: 250.1 },
-            { hd: "TQAAF1600", block: "Xa Phu Luong-001- L02", type: "Triển khai mới", staff: "TQGTI.BINHLV6", hours: 248.3 },
-            { hd: "TQAAF1677", block: "Phuong An Tuong-001- L02", type: "Triển khai mới", staff: "TQGTI.GIANGVH2", hours: 246.0 },
-            { hd: "TQAAF1767", block: "Xa Ham Yen-001- L02", type: "Triển khai mới", staff: "TQGTI.CAOTT", hours: 175.5 },
-            { hd: "TQAAF1779", block: "Xa Yen Son-001- L02", type: "Triển khai mới", staff: "TQGTI.TUNGDT4", hours: 175.1 },
-            { hd: "TQAAF1800", block: "Xa Yen Son-001- L02", type: "Triển khai mới", staff: "TQGTI.TRUNGNX3", hours: 172.7 },
-            { hd: "TQAAF1774", block: "Xa Yen Son-001- L02", type: "Triển khai mới", staff: "TQGTI.TRUNGNX3", hours: 169.6 },
-            { hd: "TQAAF1812", block: "Phuong Minh Xuan-001- L03", type: "Triển khai mới", staff: "TQGTI.TUANQD", hours: 169.4 },
-            { hd: "TQAAF1820", block: "Phuong My Lam-001- L01", type: "Triển khai mới", staff: "TQGTI.QUYETNT1", hours: 165.2 }
+            { hd: "TQAAF1352", block: "Xa Hung Duc-001- L01", ptcDateStr: "04-09-2026 13:16:04", type: "Triển khai mới", staff: "TQGTI.BINHTH1", hours: 484.5 },
+            { hd: "TQAAC3881", block: "Xa Hung Duc-001- L01", ptcDateStr: "08-09-2026 09:07:03", type: "KH nâng cấp dịch vụ gia tăng", staff: "TQGTI.BINHTH1", hours: 392.7 },
+            { hd: "TQAAC8438", block: "Xa Hung Duc-001- L01", ptcDateStr: "08-09-2026 17:47:20", type: "KH nâng cấp dịch vụ gia tăng", staff: "TQGTI.BINHTH1", hours: 384.0 },
+            { hd: "TQAAF1563", block: "Phuong Minh Xuan-001- L05", ptcDateStr: "09-09-2026 15:11:55", type: "Triển khai mới", staff: "TQGTI.TUANQD", hours: 362.6 },
+            { hd: "TQAAF1606", block: "Xa Chiem Hoa-001- L04", ptcDateStr: "11-09-2026 10:46:59", type: "Triển khai mới", staff: "TQGTI.TIENVT3", hours: 319.0 }
         ];
 
-        // Core Application State
         let rawData = [...SAMPLE_DATA];
         let filteredData = [...SAMPLE_DATA];
         
-        // Table Pagination State (Configured to 10 rows per page)
         let currentPage = 1;
         const pageSize = 10;
         let sortColumn = 'hours';
         let sortDirection = 'desc';
 
-        // Alerts Table Pagination State
         let currentAlertsPage = 1;
         const alertsPageSize = 10;
 
-        // Staff Table Pagination State
         let currentStaffPage = 1;
         const staffPageSize = 10;
 
-        // Chart instances
         let chartTypesInstance = null;
         let chartBlockHoursInstance = null;
         let chartHoursDistributionInstance = null;
         let chartStaffOverdueInstance = null;
 
-        // Initialize Application on DOM Ready
         window.onload = function() {
             setupEventListeners();
             processDataAndUpdateUI();
-            showToast("Đã tải dữ liệu mẫu thành công", "info");
+            showToast("Đã tải dữ liệu mẫu!", "info");
         };
 
         function setupEventListeners() {
-            // Excel file upload listener
             document.getElementById('excelFileInput').addEventListener('change', handleFileUpload);
+            
+            document.getElementById('btnReloadSample').addEventListener('click', () => {
+                rawData = [...SAMPLE_DATA];
+                document.getElementById('excelFileInput').value = '';
+                processDataAndUpdateUI();
+                showToast("Đã khôi phục dữ liệu mẫu!", "info");
+            });
 
-            // Filter change listeners
             document.getElementById('searchInput').addEventListener('input', applyFilters);
             document.getElementById('filterBlock').addEventListener('change', applyFilters);
             document.getElementById('filterType').addEventListener('change', applyFilters);
             document.getElementById('filterStaff').addEventListener('change', applyFilters);
             document.getElementById('filterHourStatus').addEventListener('change', applyFilters);
 
-            // Password modal enter key press listener
             document.getElementById('inputSecurityPassword').addEventListener('keyup', function(e) {
                 if (e.key === 'Enter') verifyPasswordAndUpload();
             });
         }
 
-        // Security Password Verification Logic
         function openPasswordModal() {
             document.getElementById('inputSecurityPassword').value = '';
             document.getElementById('passwordErrorMsg').classList.add('hidden');
@@ -600,6 +580,31 @@
             }
         }
 
+        // Parse Date string in format DD-MM-YYYY HH:mm:ss or similar from Column L
+        function parseDateTimeFromColL(val) {
+            if (!val) return null;
+            if (val instanceof Date) return val;
+
+            const str = String(val).trim();
+            if (!str) return null;
+
+            // Pattern for DD-MM-YYYY HH:mm:ss or DD/MM/YYYY HH:mm:ss
+            const match = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+            if (match) {
+                const day = parseInt(match[1], 10);
+                const month = parseInt(match[2], 10) - 1; // 0-indexed month
+                const year = parseInt(match[3], 10);
+                const hour = match[4] ? parseInt(match[4], 10) : 0;
+                const min = match[5] ? parseInt(match[5], 10) : 0;
+                const sec = match[6] ? parseInt(match[6], 10) : 0;
+                const d = new Date(year, month, day, hour, min, sec);
+                if (!isNaN(d.getTime())) return d;
+            }
+
+            const parsed = new Date(str);
+            return isNaN(parsed.getTime()) ? null : parsed;
+        }
+
         function handleFileUpload(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -612,7 +617,6 @@
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     
-                    // Parse sheet to array of rows
                     const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: "" });
 
                     if (!rows || rows.length <= 1) {
@@ -620,83 +624,85 @@
                         return;
                     }
 
-                    // Dynamically locate header row in first 15 rows
                     let headerRowIndex = 0;
                     for (let r = 0; r < Math.min(15, rows.length); r++) {
                         const rowStr = rows[r].map(c => String(c || '').toLowerCase()).join(" ");
-                        if (rowStr.includes("hợp đồng") || rowStr.includes("số hđ") || rowStr.includes("block") || rowStr.includes("triển khai") || rowStr.includes("tồn giờ")) {
+                        if (rowStr.includes("hợp đồng") || rowStr.includes("số hđ") || rowStr.includes("block") || rowStr.includes("tg tạo ptc")) {
                             headerRowIndex = r;
                             break;
                         }
                     }
 
-                    // STRICT Column Specifications:
-                    // Column D: Số HĐ (Col index 3)
-                    // Column Q: Block (Col index 16)
-                    // Column M: Loại triển khai (Col index 12)
-                    // Column R: Nhân sự (Col index 17)
-                    // Column W: Tồn giờ (Col index 22)
-                    let colD = 3;  // Column D
-                    let colQ = 16; // Column Q (Block)
-                    let colM = 12; // Column M
-                    let colR = 17; // Column R
-                    let colW = 22; // Column W
+                    // Column Indices based on standard raw excel structure:
+                    // Col D (Index 3): Số HĐ
+                    // Col F/Q (Index 5/16): Block
+                    // Col L (Index 11): TG tạo PTC
+                    // Col M (Index 12): Loại triển khai
+                    // Col R (Index 17): Nhân sự
+                    let colD = 3;  
+                    let colBlock = 5; 
+                    let colL = 11; // Col L - TG Tạo PTC
+                    let colM = 12; 
+                    let colR = 17; 
 
                     if (rows[headerRowIndex]) {
                         const headers = rows[headerRowIndex].map(h => String(h || '').trim().toLowerCase());
                         headers.forEach((h, idx) => {
-                            const isNoteCol = h.includes("ghi chú") || h.includes("lý do") || h.includes("nội dung") || h.includes("diễn giải") || h.includes("chi tiết") || h.includes("ý kiến") || h.includes("hẹn");
-                            if (!isNoteCol) {
-                                if (h === "số hđ" || h === "mã hđ" || h === "số hợp đồng") colD = idx;
-                                if (h === "block" || h === "mã block" || h === "tên block") colQ = idx;
-                                if (h === "loại triển khai" || h === "loại tk") colM = idx;
-                                if (h === "nhân sự" || h === "nhân sự phụ trách") colR = idx;
-                                if (h === "tồn giờ" || h === "giờ tồn" || h === "tồn giờ (h)" || h === "thời gian tồn") colW = idx;
-                            }
+                            if (h.includes("số hđ") || h === "mã hđ" || h === "số hợp đồng") colD = idx;
+                            if (h === "block" || h.includes("block")) colBlock = idx;
+                            if (h.includes("tg tạo ptc") || h.includes("tạo ptc") || h === "thời gian tạo ptc") colL = idx;
+                            if (h.includes("loại triển khai") || h === "loại tk") colM = idx;
+                            if (h === "nhân sự" || h.includes("nhân sự")) colR = idx;
                         });
                     }
 
+                    // Lấy thời gian hiện tại lúc tải file lên
+                    const now = new Date();
+
                     const parsedList = [];
                     for (let i = headerRowIndex + 1; i < rows.length; i++) {
-                        const excelRowNum = i + 1; // 1-indexed row number in worksheet
+                        const excelRowNum = i + 1;
                         const row = rows[i];
                         if (!row || row.length === 0) continue;
 
-                        // Retrieve cell data directly from Column Letters (D, Q, M, R, W)
                         const cellValD = getCellValue(worksheet, row, 'D', colD, excelRowNum);
-                        const cellValQ = getCellValue(worksheet, row, 'Q', colQ, excelRowNum);
+                        const cellValBlock = getCellValue(worksheet, row, 'F', colBlock, excelRowNum);
+                        const cellValL = getCellValue(worksheet, row, 'L', colL, excelRowNum);
                         const cellValM = getCellValue(worksheet, row, 'M', colM, excelRowNum);
                         const cellValR = getCellValue(worksheet, row, 'R', colR, excelRowNum);
-                        const cellValW = getCellValue(worksheet, row, 'W', colW, excelRowNum);
 
                         const rawHd = cellValD.formatted;
-                        const rawBlock = cellValQ.formatted;
+                        const rawBlock = cellValBlock.formatted;
 
                         if (!rawHd && !rawBlock) continue;
 
                         const hdVal = rawHd || `HĐ-${i}`;
-                        
-                        // Clean and normalize Block (Col Q)
                         let blockVal = rawBlock.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
                         if (!blockVal || blockVal === "-" || blockVal.toLowerCase() === "null") blockVal = "Chưa xác định";
 
-                        // Clean and normalize Type (Col M)
                         let typeVal = cellValM.formatted.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
                         if (!typeVal || typeVal === "-") typeVal = "Chưa phân loại";
 
-                        // Clean and normalize Staff (Col R)
                         let staffVal = cellValR.formatted.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim();
                         if (!staffVal || staffVal === "-") staffVal = "Chưa phân công";
 
-                        // Parse Hours strictly from Column W
-                        let hoursVal = parseColumnWHours(cellValW);
+                        // TÍNH TOÁN CÔNG THỨC: (Hiện tại - Cột L)
+                        const ptcDateStr = cellValL.formatted || cellValL.raw;
+                        const ptcDate = parseDateTimeFromColL(ptcDateStr);
+                        
+                        let calculatedHours = 0;
+                        if (ptcDate) {
+                            const diffMs = now.getTime() - ptcDate.getTime();
+                            calculatedHours = Math.max(0, diffMs / (1000 * 60 * 60));
+                        }
 
                         parsedList.push({
                             hd: hdVal,
                             block: blockVal,
+                            ptcDateStr: ptcDateStr || "Chưa có",
                             type: typeVal,
                             staff: staffVal,
-                            hours: Math.round(hoursVal * 10) / 10
+                            hours: Math.round(calculatedHours * 10) / 10
                         });
                     }
 
@@ -706,7 +712,7 @@
                         currentAlertsPage = 1;
                         currentStaffPage = 1;
                         processDataAndUpdateUI(true);
-                        showToast(`Đã tải ${parsedList.length} hợp đồng thành công!`, "success");
+                        showToast(`Đã nạp ${parsedList.length} hợp đồng và tự động tính Tồn Giờ thành công!`, "success");
                     } else {
                         showToast("Không tìm thấy dữ liệu hợp đồng hợp lệ trong file!", "error");
                     }
@@ -734,44 +740,6 @@
                 return { raw: rowArray[colIdx], formatted: val, cell: null };
             }
             return { raw: "", formatted: "", cell: null };
-        }
-
-        function parseColumnWHours(cellData) {
-            if (!cellData) return 0;
-            const { raw, formatted, cell } = cellData;
-
-            if (formatted && formatted.includes(':')) {
-                const parts = formatted.split(':');
-                if (parts.length >= 2) {
-                    const h = parseFloat(parts[0]) || 0;
-                    const m = parseFloat(parts[1]) || 0;
-                    const s = parts.length > 2 ? (parseFloat(parts[2]) || 0) : 0;
-                    return Math.round((h + (m / 60) + (s / 3600)) * 10) / 10;
-                }
-            }
-
-            if (cell && cell.t === 'n' && typeof raw === 'number') {
-                const fmt = (cell.z || '').toLowerCase();
-                if ((fmt.includes('[h]') || fmt.includes('hh:mm')) && raw < 100) {
-                    return Math.round((raw * 24) * 10) / 10;
-                }
-            }
-
-            const str = formatted || String(raw || '');
-            if (/[dhm]/i.test(str)) {
-                let total = 0;
-                const daysMatch = str.match(/(\d+(?:\.\d+)?)\s*d/i);
-                const hoursMatch = str.match(/(\d+(?:\.\d+)?)\s*h/i);
-                const minsMatch = str.match(/(\d+(?:\.\d+)?)\s*m/i);
-                if (daysMatch) total += parseFloat(daysMatch[1]) * 24;
-                if (hoursMatch) total += parseFloat(hoursMatch[1]);
-                if (minsMatch) total += parseFloat(minsMatch[1]) / 60;
-                if (total > 0) return Math.round(total * 10) / 10;
-            }
-
-            const cleanStr = str.replace(/,/g, '.').replace(/[^0-9.-]/g, '');
-            const num = parseFloat(cleanStr);
-            return isNaN(num) || num < 0 ? 0 : Math.round(num * 10) / 10;
         }
 
         function populateDropdownFilters() {
@@ -856,7 +824,7 @@
             if (overdue72.length > 0) {
                 banner.classList.remove('hidden');
                 document.getElementById('alertBannerText').innerHTML = 
-                    `Hiện tại có <strong class="text-white">${overdue72.length} hợp đồng</strong> có tồn giờ lớn hơn <strong>72 giờ</strong>. Cần liên hệ nhân sự phụ trách gấp!`;
+                    `Hiện tại có <strong class="text-white">${overdue72.length} hợp đồng</strong> có tồn giờ (tính từ Cột L) lớn hơn <strong>72 giờ</strong>. Cần liên hệ nhân sự phụ trách gấp!`;
             } else {
                 banner.classList.add('hidden');
             }
@@ -975,7 +943,7 @@
                 }
             });
 
-            // Chart 3: Hours Distribution Histogram
+            // Chart 3: Hours Distribution
             let rangeUnder24 = 0, range24To48 = 0, range48To72 = 0, rangeOver72 = 0;
             filteredData.forEach(d => {
                 if (d.hours < 24) rangeUnder24++;
@@ -1015,9 +983,9 @@
             if (over72Data.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="py-8 text-center text-slate-500">
+                        <td colspan="8" class="py-8 text-center text-slate-500">
                             <i class="fa-solid fa-circle-check text-emerald-500 text-2xl mb-2 block"></i>
-                            Tuyệt vời! Không có hợp đồng nào có tồn giờ > 72h trong tập dữ liệu lọc.
+                            Tuyệt vời! Không có hợp đồng nào tồn > 72h trong tập dữ liệu lọc.
                         </td>
                     </tr>`;
                 document.getElementById('alertsPaginationInfo').innerText = `Trang 0 / 0 (0 bản ghi)`;
@@ -1027,7 +995,6 @@
                 return;
             }
 
-            // Pagination calculation for Alerts Table (Strictly 10 rows per page)
             const totalAlertsPages = Math.ceil(over72Data.length / alertsPageSize) || 1;
             if (currentAlertsPage > totalAlertsPages) currentAlertsPage = totalAlertsPages;
 
@@ -1039,6 +1006,7 @@
                     <td class="py-3 px-4 text-slate-400 font-mono">${startIdx + idx + 1}</td>
                     <td class="py-3 px-4 font-bold text-white">${escapeHtml(item.hd)}</td>
                     <td class="py-3 px-4 text-slate-300"><i class="fa-regular fa-building text-slate-500 mr-1.5"></i>${escapeHtml(item.block)}</td>
+                    <td class="py-3 px-4 text-slate-400 font-mono text-[11px]">${escapeHtml(item.ptcDateStr)}</td>
                     <td class="py-3 px-4"><span class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">${escapeHtml(item.type)}</span></td>
                     <td class="py-3 px-4 font-medium text-slate-200"><i class="fa-regular fa-user text-slate-400 mr-1.5"></i>${escapeHtml(item.staff)}</td>
                     <td class="py-3 px-4 text-right font-extrabold text-red-400 text-sm font-mono">${item.hours}h</td>
@@ -1050,7 +1018,6 @@
                 </tr>
             `).join('');
 
-            // Update Pagination UI
             document.getElementById('alertsPaginationInfo').innerText = `Trang ${currentAlertsPage} / ${totalAlertsPages} (${over72Data.length} bản ghi)`;
             document.getElementById('alertsPageIndicator').innerText = currentAlertsPage;
             document.getElementById('btnPrevAlertsPage').disabled = currentAlertsPage === 1;
@@ -1079,7 +1046,6 @@
 
             document.getElementById('tableRecordCount').innerText = `Hiển thị ${sorted.length} hợp đồng`;
 
-            // Pagination calculation (Strictly 10 rows per page)
             const totalPages = Math.ceil(sorted.length / pageSize) || 1;
             if (currentPage > totalPages) currentPage = totalPages;
 
@@ -1089,7 +1055,7 @@
             if (pageData.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="py-8 text-center text-slate-500">
+                        <td colspan="8" class="py-8 text-center text-slate-500">
                             Không tìm thấy hợp đồng phù hợp với bộ lọc.
                         </td>
                     </tr>`;
@@ -1103,6 +1069,7 @@
                         <td class="py-3 px-4 text-slate-500 font-mono text-[11px]">${startIndex + idx + 1}</td>
                         <td class="py-3 px-4 font-semibold text-white font-mono">${escapeHtml(item.hd)}</td>
                         <td class="py-3 px-4 text-slate-300">${escapeHtml(item.block)}</td>
+                        <td class="py-3 px-4 text-slate-400 font-mono text-[11px]">${escapeHtml(item.ptcDateStr)}</td>
                         <td class="py-3 px-4"><span class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700/60">${escapeHtml(item.type)}</span></td>
                         <td class="py-3 px-4 text-slate-200">${escapeHtml(item.staff)}</td>
                         <td class="py-3 px-4 text-right font-bold font-mono ${isAlert ? 'text-red-400 text-sm' : isWarning ? 'text-amber-400' : 'text-emerald-400'}">
@@ -1120,7 +1087,6 @@
                 }).join('');
             }
 
-            // Update Pagination UI
             document.getElementById('paginationInfo').innerText = `Trang ${currentPage} / ${totalPages} (${sorted.length} bản ghi)`;
             document.getElementById('pageIndicator').innerText = currentPage;
             document.getElementById('btnPrevPage').disabled = currentPage === 1;
@@ -1156,7 +1122,6 @@
 
             const staffList = Object.keys(staffStats).sort((a,b) => staffStats[b].overdue - staffStats[a].overdue);
 
-            // Pagination calculation for Staff Table (Strictly 10 rows per page)
             const totalStaffPages = Math.ceil(staffList.length / staffPageSize) || 1;
             if (currentStaffPage > totalStaffPages) currentStaffPage = totalStaffPages;
 
@@ -1198,13 +1163,11 @@
                 }).join('');
             }
 
-            // Update Staff Pagination Footer UI
             document.getElementById('staffPaginationInfo').innerText = `Trang ${currentStaffPage} / ${totalStaffPages} (${staffList.length} nhân sự)`;
             document.getElementById('staffPageIndicator').innerText = currentStaffPage;
             document.getElementById('btnPrevStaffPage').disabled = currentStaffPage === 1;
             document.getElementById('btnNextStaffPage').disabled = currentStaffPage === totalStaffPages;
 
-            // Render Staff Overdue Chart
             const ctxStaff = document.getElementById('chartStaffOverdue').getContext('2d');
             if (chartStaffOverdueInstance) chartStaffOverdueInstance.destroy();
             chartStaffOverdueInstance = new Chart(ctxStaff, {
@@ -1279,9 +1242,9 @@
         }
 
         function downloadCSV(dataArray, filename) {
-            let csvContent = "\uFEFFSố HĐ,Block,Loại Triển Khai,Nhân Sự,Tồn Giờ\n";
+            let csvContent = "\uFEFFSố HĐ,Block,TG Tạo PTC,Loại Triển Khai,Nhân Sự,Tồn Giờ\n";
             dataArray.forEach(row => {
-                csvContent += `"${row.hd}","${row.block}","${row.type}","${row.staff}",${row.hours}\n`;
+                csvContent += `"${row.hd}","${row.block}","${row.ptcDateStr}","${row.type}","${row.staff}",${row.hours}\n`;
             });
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
